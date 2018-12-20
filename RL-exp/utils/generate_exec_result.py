@@ -7,16 +7,6 @@ import sys
 """
 Generate execution result file from labels of each models
 
-Return:
-exec_result_pkl: the execution result file(.pkl) of data
-    data structure:
-    {
-        "data_id": {
-            "modelname":    # same as modelname in model_config_json
-                [("label", conf), ... ],    # label & confidence
-        }
-    }
-
 Usage:
     python3 generate_exec_result.py in_dir regex out_path
 
@@ -31,6 +21,16 @@ Usage:
     regex is the regular expression to extract the 'modelname' substring
     e.g. above in_dir uses 'res_(.+).pkl' as the regex
 
+Return:
+exec_result_pkl: the execution result file(.pkl) of data
+    data structure:
+    {
+        "data_id": [
+            ("label", conf),    # label & confidence
+            ...
+        ]
+    }
+    
 """
 
 def extract_modelname(file_name, regex):
@@ -48,12 +48,12 @@ def read_darknet(label_tmp):
 def read_facerecog(label_tmp):
     res = []
     for _ in label_tmp:
-        res.append("face")
+        res.append(("face", 1.0))
     return res
 
-def read_place365(label_tmp):
+def read_places365(label_tmp):
     res = []
-    for (conf, place_id) in label_tmp:
+    for (conf, place_id) in label_tmp[:1]:
         res.append((place_id, conf))
     return res
 
@@ -76,10 +76,9 @@ if __name__ == "__main__":
         pkl_data = pickle.load(open(os.path.join(args.in_dir, pkl_file_name), "rb"))
         for data_id, label_tmp in pkl_data.items():
             if data_id not in exec_result:
-                exec_result[data_id] = {}
+                exec_result[data_id] = []
             # call local ad-hoc function to read pickle data
-            exec_result[data_id][modelname] = locals()["read_"+modelname](label_tmp)
+            exec_result[data_id] += locals()["read_"+modelname](label_tmp)
             #print(data_id, modelname)
-            #print(exec_result[data_id][modelname])
     pickle.dump(exec_result, open(args.out_path, "wb"))
     print("{} saved.".format(args.out_path))
